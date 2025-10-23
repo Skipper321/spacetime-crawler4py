@@ -1,6 +1,8 @@
 import re
 from urllib.parse import urlparse
 
+from bs4 import BeautifulSoup
+
 def scraper(url, resp):
     links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
@@ -15,6 +17,52 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
+
+    links = []
+
+    # Handling bad error responses
+    if resp.status != 200 or resp.raw_response is None: 
+        # Log resp.error for debugging 
+        print(f"[BAD RESPONSE] {url} | Status: {resp.status} | Error: {getattr(resp, 'error', None)}")
+        return links 
+
+    # Ensure that content is HTML 
+    content_type = resp.raw_response.headers.get("Content-Type", "")
+    if "text/html" not in content_type: 
+        # Log content error for debugging 
+        print(f"[SKIPPED NON-HTML] {url} | Content-Type: {content_type}")
+        return links
+
+    # Parse through content 
+    try: 
+        html = resp.raw_response.content
+        soup = BeautifulSoup(html, "lxml")
+    
+    except Exception as e:
+        print(f"Error parsing HTML at {url}: {e}")
+        return links
+    
+    try: 
+        # Extract all <a> tags with href attributes 
+        for tag in soup.find_all("a", href = True):
+            href = tag["href"].strip()
+            if not href:
+                continue
+
+            # Resolve the relative URLS to absolute 
+            abs_url = urljoin(url, href)
+
+            # Remove fragments 
+            abs_url, _ = urldefrag(abs_url)
+
+            links.append(abs_url)
+
+            # Use for Debugging 
+            # print(f"[SUCCESS] Found {len(links)} links on {url}")
+    except Exception as e: 
+        print(f"[EXTRACTION ERROR] Problem while extracting links from {url}: {e}")
+
+    # only return the URLS within the domains and paths mentioned in project description
     return list()
 
 def is_valid(url):
