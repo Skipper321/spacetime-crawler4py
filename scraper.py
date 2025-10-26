@@ -3,9 +3,21 @@ from urllib.parse import urlparse, urljoin, urldefrag
 
 from bs4 import BeautifulSoup
 
+unique_urls = set()
+
 def scraper(url, resp):
+    global unique_urls
+
     links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
+    valid_links = [link for link in links if is_valid(link)]
+
+    for link in valid_links:
+        unique_urls.add(link)
+
+    if len(unique_urls) % 50 == 0:
+        print(f"[INFO] Found {len(unique_urls)} unique pages")
+
+    return valid_links
 
 def extract_next_links(url, resp):
     # Implementation required.
