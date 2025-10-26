@@ -63,7 +63,7 @@ def extract_next_links(url, resp):
         print(f"[EXTRACTION ERROR] Problem while extracting links from {url}: {e}")
 
     # only return the URLS within the domains and paths mentioned in project description
-    return list()
+    return links
 
 def is_valid(url):
     # Decide whether to crawl this url or not. 
@@ -73,6 +73,18 @@ def is_valid(url):
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
+
+        # We only want to allow subdomains of UCI ICS
+        domain = parsed.netloc.lower()
+        allowed_domains = {
+            "ics.uci.edu",
+            "cs.uci.edu",
+            "informatics.uci.edu",
+            "stat.uci.edu"
+        }
+        if not any(domain.endswith(allowed) for allowed in allowed_domains):
+            return False
+
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
