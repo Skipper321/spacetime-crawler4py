@@ -1,8 +1,12 @@
 import re
+import tokenizer
 from urllib.parse import urlparse, urljoin, urldefrag
+from collections import defaultdict
 
 from bs4 import BeautifulSoup
 
+STOPWORDS = set(open("stopwords.txt").read().split())
+word_frequencies = defaultdict(int)
 unique_urls = set()
 
 def scraper(url, resp):
@@ -31,6 +35,7 @@ def extract_next_links(url, resp):
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
     links = []
+    global word_frequencies
 
     # Handling bad error responses
     if resp.status != 200 or resp.raw_response is None: 
@@ -49,6 +54,15 @@ def extract_next_links(url, resp):
     try: 
         html = resp.raw_response.content
         soup = BeautifulSoup(html, "lxml")
+
+        for script in soup(["script", "style"]):
+            script.extract()
+
+        text = soup.get_text()
+        tokens = tokenizer.tokenize_from_text(text)
+        for t in tokens:
+            if t not in STOPWORDS:
+                word_frequencies[t] += 1
     
     except Exception as e:
         print(f"Error parsing HTML at {url}: {e}")

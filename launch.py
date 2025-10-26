@@ -15,8 +15,15 @@ def main(config_file, restart):
     config = Config(cparser)
     config.cache_server = get_cache_server(config, restart)
     crawler = Crawler(config, restart)
-    crawler.start()
 
+    try:
+        crawler.start()
+    finally:
+        from scraper import word_frequencies
+        import json
+        with open("word_frequencies_final.json", "w") as f:
+            json.dump(word_frequencies, f)
+        print("[SAVED] Final word frequencies saved.")
 
 if __name__ == "__main__":
     parser = ArgumentParser()

@@ -150,6 +150,21 @@ def computeWordFrequencies(tokenList):
 
     return myDict
 
+def tokenize_from_text(text: str):
+    tokens = []
+    for line in text.splitlines():
+        for word in line.split():
+            try:
+                valIndex = isValidWord(word)
+                if valIndex == -1:
+                    tokens.append(word)
+                else:
+                    wordsSlicedFromWord = getSlicedWords(word)
+                    tokens.extend(wordsSlicedFromWord)
+            except Exception:
+                pass
+    return tokens
+
 if __name__ == '__main__':
     samplePath = getInput()
     tokens = tokenize(samplePath)
