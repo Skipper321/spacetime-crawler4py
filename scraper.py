@@ -59,7 +59,7 @@ def extract_next_links(url, resp):
             script.extract()
 
         text = soup.get_text()
-        tokens = tokenizer.tokenize_from_text(text)
+        tokens = tokenizer.tokenize(text)
         for t in tokens:
             if t not in STOPWORDS:
                 word_frequencies[t] += 1

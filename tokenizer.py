@@ -104,11 +104,14 @@ def getSlicedWords(bigWord:string, firstSplit = -1):
     return splittedWords
 
 # tokenizer
-def tokenize(TextFilePath: string):
-    f = open(TextFilePath, 'r', encoding='utf8')
-
-    raw_list = f.readlines()
+def tokenize(input_data: str):
     tokens = []
+
+    if os.path.exists(input_data):
+        with open(input_data, 'r', encoding='utf8') as f:
+            raw_list = f.readlines()
+    else:
+        raw_list = input_data.splitlines()
 
     for line in raw_list:
         for word in line.split():
@@ -124,15 +127,13 @@ def tokenize(TextFilePath: string):
                 valIndex = isValidWord(word)
 
                 if valIndex == -1:
-                    tokens.append(word)
+                    tokens.append(word.lower())
                 else:
                     wordsSlicedFromWord = getSlicedWords(word)
                     tokens.extend(wordsSlicedFromWord)
             except Exception:
                 pass
                 # just skip the word entirely if you can't
-
-    f.close()    
 
     return tokens
 
@@ -149,21 +150,6 @@ def computeWordFrequencies(tokenList):
             myDict[currentWord] += 1
 
     return myDict
-
-def tokenize_from_text(text: str):
-    tokens = []
-    for line in text.splitlines():
-        for word in line.split():
-            try:
-                valIndex = isValidWord(word)
-                if valIndex == -1:
-                    tokens.append(word)
-                else:
-                    wordsSlicedFromWord = getSlicedWords(word)
-                    tokens.extend(wordsSlicedFromWord)
-            except Exception:
-                pass
-    return tokens
 
 if __name__ == '__main__':
     samplePath = getInput()
