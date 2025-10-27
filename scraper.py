@@ -97,6 +97,8 @@ def is_valid(url):
     # There are already some conditions that return False.
     try:
         parsed = urlparse(url)
+
+        # Only allowing http/https
         if parsed.scheme not in set(["http", "https"]):
             return False
 
@@ -109,6 +111,20 @@ def is_valid(url):
             "stat.uci.edu"
         }
         if not any(domain.endswith(allowed) for allowed in allowed_domains):
+            return False
+
+        # Trap blocking
+        path_lower = parsed.path.lower()
+        query_lower = parsed.query.lower()
+
+        trap_keywords = ["ical", "outlook-ical", "/events/tag/talks/day/"]
+        if any(k in path_lower or k in query_lower for k in trap_keywords):
+            print(f"[TRAP BLOCKED] {url}")
+            return False
+
+        # Block URLs that contain date-like patterns (YYYY-MM-DD)
+        if re.search(r"\d{4}-\d{2}-\d{2}", url):
+            print(f"[DATE TRAP BLOCKED] {url}")
             return False
 
         return not re.match(
