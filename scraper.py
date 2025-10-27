@@ -133,14 +133,16 @@ def is_valid(url):
         path_lower = parsed.path.lower()
         query_lower = parsed.query.lower()
 
-        trap_keywords = ["ical", "outlook-ical", "/events/tag/talks/day/"]
-        if any(k in path_lower or k in query_lower for k in trap_keywords):
-            logger.warning(f"TRAP BLOCKED (keyword): {url}")
+        if "/events/tag/talks/" in path_lower:
+            logger.warning(f"TRAP BLOCKED (event talks archive): {url}")
             return False
 
-        # Block URLs that contain date-like patterns (YYYY-MM-DD)
-        if re.search(r"\d{4}-\d{2}-\d{2}", url):
-            logger.warning(f"DATE TRAP BLOCKED: {url}")
+        if "tribe-bar-date=" in query_lower or "eventdisplay=past" in query_lower:
+            logger.warning(f"TRAP BLOCKED (calendar pagination): {url}")
+            return False
+
+        if re.search(r"\d{4}-\d{2}(-\d{2})?", url):
+            logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
 
         return not re.match(
