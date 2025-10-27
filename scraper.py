@@ -1,9 +1,25 @@
 import re
 import tokenizer
+import logging
 from urllib.parse import urlparse, urljoin, urldefrag
 from collections import defaultdict
 
 from bs4 import BeautifulSoup
+
+logging.basicConfig(
+    filename="crawler_log.txt",
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+
+logger = logging.getLogger(__name__)
+
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(message)s')
+console.setFormatter(formatter)
+logger.addHandler(console)
 
 STOPWORDS = set(open("stopwords.txt").read().split())
 word_frequencies = defaultdict(int)
@@ -18,8 +34,8 @@ def scraper(url, resp):
     for link in valid_links:
         unique_urls.add(link)
 
-    if len(unique_urls) % 50 == 0:
-        print(f"[INFO] Found {len(unique_urls)} unique pages")
+    if len(unique_urls) % 100 == 0:
+        logger.info(f"CRAWLED {len(unique_urls)} unique pages so far.")
 
     return valid_links
 
@@ -40,14 +56,14 @@ def extract_next_links(url, resp):
     # Handling bad error responses
     if resp.status != 200 or resp.raw_response is None: 
         # Log resp.error for debugging 
-        print(f"[BAD RESPONSE] {url} | Status: {resp.status} | Error: {getattr(resp, 'error', None)}")
+        logger.error(f"BAD RESPONSE {resp.status}: {url} | Error: {getattr(resp, 'error', None)}")
         return links 
 
     # Ensure that content is HTML 
     content_type = resp.raw_response.headers.get("Content-Type", "")
     if "text/html" not in content_type: 
         # Log content error for debugging 
-        print(f"[SKIPPED NON-HTML] {url} | Content-Type: {content_type}")
+        logger.info(f"SKIPPED NON-HTML: {url} | Content-Type: {content_type}")
         return links
 
     # Parse through content 
@@ -119,12 +135,12 @@ def is_valid(url):
 
         trap_keywords = ["ical", "outlook-ical", "/events/tag/talks/day/"]
         if any(k in path_lower or k in query_lower for k in trap_keywords):
-            print(f"[TRAP BLOCKED] {url}")
+            logger.warning(f"TRAP BLOCKED (keyword): {url}")
             return False
 
         # Block URLs that contain date-like patterns (YYYY-MM-DD)
         if re.search(r"\d{4}-\d{2}-\d{2}", url):
-            print(f"[DATE TRAP BLOCKED] {url}")
+            logger.warning(f"DATE TRAP BLOCKED: {url}")
             return False
 
         return not re.match(
