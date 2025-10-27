@@ -5,9 +5,13 @@ from utils.server_registration import get_cache_server
 from utils.config import Config
 from crawler import Crawler
 
-# THESE LINES ARE NEEDED IF NOT RUNNING ON LINUX
+# THESE LINES ARE NEEDED IF RUNNING ON MAC
 # import multiprocessing
 # multiprocessing.set_start_method("fork")
+
+# THESE LINES ARE NEEDED IF RUNNING ON WINDOWS
+# import multiprocessing
+# multiprocessing.set_start_method("spawn", force=True)
 
 def main(config_file, restart):
     cparser = ConfigParser()
