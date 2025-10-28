@@ -161,24 +161,31 @@ def is_valid(url):
         query_lower = parsed.query.lower()
 
         if "/events/tag/talks/" in path_lower:
-            logger.warning(f"TRAP BLOCKED (event talks archive): {url}")
+            # logger.warning(f"TRAP BLOCKED (event talks archive): {url}")
             return False
 
         if "tribe-bar-date=" in query_lower or "eventdisplay=past" in query_lower:
-            logger.warning(f"TRAP BLOCKED (calendar pagination): {url}")
+            # logger.warning(f"TRAP BLOCKED (calendar pagination): {url}")
             return False
 
         if re.search(r"\d{4}-\d{2}(-\d{2})?", url):
-            logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
+            # logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
         
-        # ?do=edit = read only markdown of the actual link
-        # ?do=login = requires login
-        completely_ignore = [f"?do=edit", f"?do=login"]
-        for item in completely_ignore:
-            if item in url:
-                logger.info(f"SKIPPED (markdown OR login page, duplicate file detected): {url}")
-                return False
+
+        # Ignoring doku action modes
+        # https://www.dokuwiki.org/devel:action_modes
+
+        if f"?do=edit" in url:
+            logger.info(f"SKIPPED (markdown file detected): {url}")
+            return False
+        
+        if f"?do=login" in url:
+            logger.info(f"SKIPPED (login page detected): {url}")
+
+        # backlink: Shows a list of pages that link to the current page.
+        if f"?do=backlink" in url:
+            logger.info(f"SKIPPED (backlink page detected): {url}")
 
         ignore_in_url = ["robots.txt", "&", f"%3A", f"?do=edit"]
         for item in ignore_in_url:
