@@ -153,7 +153,7 @@ def is_valid(url):
             "stat.uci.edu"
         }
         if not any(domain == allowed or domain.endswith(f".{allowed}") for allowed in allowed_domains):
-            logger.info(f"BLOCKED (outside domain): {url}")
+            # logger.info(f"BLOCKED (outside domain): {url}")
             return False
 
         # Trap blocking
@@ -177,20 +177,31 @@ def is_valid(url):
         # https://www.dokuwiki.org/devel:action_modes
 
         if f"?do=edit" in url:
-            logger.info(f"SKIPPED (markdown file detected): {url}")
+            # logger.info(f"SKIPPED (doku.php markdown file detected): {url}")
             return False
         
         if f"?do=login" in url:
-            logger.info(f"SKIPPED (login page detected): {url}")
+            # logger.info(f"SKIPPED (doku.php login page detected): {url}")
+            return False
 
         # backlink: Shows a list of pages that link to the current page.
         if f"?do=backlink" in url:
-            logger.info(f"SKIPPED (backlink page detected): {url}")
+            # logger.info(f"SKIPPED (doku.php backlink page detected): {url}")
+            return False
+
+        # ignore revisions of a page
+        if f"?do=revisions" in url:
+            # logger.info(f"SKIPPED (doku.php revision log for page is detected): {url}")
+            return False
+        
+        if f"%3" in url:
+            # logger.info(f"SKIPPED (doku.php tag detected): {url}")
+            return False
 
         ignore_in_url = ["robots.txt", "&", f"%3A", f"?do=edit"]
         for item in ignore_in_url:
             if (url.count(item) > 1):
-                logger.warning(f"TRAP BLOCKED (url with repeating pattern): {url}")
+                # logger.warning(f"TRAP BLOCKED (url with repeating pattern): {url}")
                 return False
 
         return not re.match(
