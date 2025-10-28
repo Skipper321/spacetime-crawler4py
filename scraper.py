@@ -29,11 +29,8 @@ def scraper(url, resp):
     global unique_urls
 
     links = extract_next_links(url, resp)
-    valid_links = []
 
-    links = extract_next_links(url, resp)
     valid_links = [link for link in links if is_valid(link)]
-
     for link in valid_links:
         unique_urls.add(link)
 
@@ -171,7 +168,29 @@ def is_valid(url):
         if re.search(r"\d{4}-\d{2}(-\d{2})?", url):
             # logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
-        
+
+        # Gitlab repos
+        if ("gitlab" in url):
+            # Ignoring parallels
+            if f"?view=parallel" in url:
+                # logger.info(f"SKIPPED (gitlab parallel detected): {url}")
+                return False
+
+            # Ignoring Gitlab repos
+            if f"commit" in url:
+                # logger.info(f"SKIPPED (gitlab commit detected): {url}")
+                return False
+
+            # Ignoring Gitlab trees
+            if f"/tree/" in url:
+                # logger.info(f"SKIPPED (gitlab tree detected): {url}")
+                return False
+
+            # Ignoring Gitlab forks
+            if f"forks" in path_lower:
+                # logger.info(f"SKIPPED (gitlab fork detected): {url}")
+                return False
+
 
         # Ignoring doku action modes
         # https://www.dokuwiki.org/devel:action_modes
@@ -193,10 +212,16 @@ def is_valid(url):
         if f"?do=revisions" in url:
             # logger.info(f"SKIPPED (doku.php revision log for page is detected): {url}")
             return False
-        
+
+        # ignore differences of revision
+        if f"?do=diff" in url:
+            # logger.info(f"SKIPPED (doku.php difference log for page is detected): {url}")
+            return False
+
         if f"%3" in url:
             # logger.info(f"SKIPPED (doku.php tag detected): {url}")
             return False
+        
 
         ignore_in_url = ["robots.txt", "&", f"%3A", f"?do=edit"]
         for item in ignore_in_url:
