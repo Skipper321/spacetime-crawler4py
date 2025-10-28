@@ -171,6 +171,11 @@ def is_valid(url):
 
         # Gitlab repos
         if ("gitlab" in url):
+            # Ignore merges
+            if f"merge_request" in path_lower:
+                # logger.info(f"SKIPPED (gitlab merge request detected): {url}")
+                return False
+            
             # Ignoring parallels
             if f"?view=parallel" in url:
                 # logger.info(f"SKIPPED (gitlab parallel detected): {url}")
@@ -190,6 +195,12 @@ def is_valid(url):
             if f"forks" in path_lower:
                 # logger.info(f"SKIPPED (gitlab fork detected): {url}")
                 return False
+
+            # Ignoring Gitlab forks
+            if ("branches" in path_lower) & ("all" not in path_lower):
+                    # Ideally we're only ignoring stale and active branches, nothing else should be lost
+                    # logger.info(f"SKIPPED (gitlab repeated branch): {url}")
+                    return False
 
 
         # Ignoring doku action modes
