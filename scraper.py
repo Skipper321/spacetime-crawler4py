@@ -29,8 +29,13 @@ def scraper(url, resp):
     global unique_urls
 
     links = extract_next_links(url, resp)
+    # Debugging 
+    #print(f"[DEBUG] {url} → Extracted {len(links)} raw links")
 
     valid_links = [link for link in links if is_valid(link)]
+    # Debugging 
+    #print(f"[DEBUG] {url} → {len(valid_links)} valid links after filtering")
+
     for link in valid_links:
         unique_urls.add(link)
 
@@ -44,6 +49,8 @@ def get_sitemap_urls(resp) -> list:
     sitemap_urls = []
 
     soup = BeautifulSoup(resp.text, 'xml')
+    
+
     for item in soup.find_all("loc"):
         print(type(item))
         if '.xml' in item.text:
@@ -66,10 +73,18 @@ def extract_next_links(url, resp):
     links = []
     global word_frequencies
 
+    domain_url_counts = defaultdict(int)
+
     # Handling bad error responses
     if resp.status != 200 or resp.raw_response is None: 
-        # Log resp.error for debugging 
+        # If its a known error code, skip 
+        if resp.status in {403, 404, 500, 502, 503, 504, 601}:
+            logger.debug(f"[SKIP STATUS] {resp.status} at {url}")
+            return links
+
+        # Otherwise Log resp.error for debugging 
         logger.error(f"BAD RESPONSE {resp.status}: {url} | Error: {getattr(resp, 'error', None)}")
+
         return links 
 
     # Ensure that content is HTML / XML
@@ -79,7 +94,7 @@ def extract_next_links(url, resp):
         try:
             sitemap_links = get_sitemap_urls(resp)
             links += sitemap_links
-            return links
+            return []
         except Exception as e: 
             print(f"[EXTRACTION ERROR] Problem while extracting links from sitemap url {url}: {e}")
             return links
@@ -92,7 +107,9 @@ def extract_next_links(url, resp):
     # Parse through content 
     try: 
         html = resp.raw_response.content
-        soup = BeautifulSoup(html, "lxml")            
+        soup = BeautifulSoup(html, "lxml")
+        # Debugging         
+        #print(f"[DEBUG] Parsed HTML for {url}")
 
         for script in soup(["script", "style"]):
             script.extract()
@@ -110,6 +127,9 @@ def extract_next_links(url, resp):
     try: 
         # Extract all <a> tags with href attributes 
         for tag in soup.find_all("a", href = True):
+            # Debugging 
+            #print(f"[DEBUG] Found {len(links)} total <a> tags on {url}")
+
             href = tag["href"].strip()
             if not href:
                 continue
@@ -121,6 +141,22 @@ def extract_next_links(url, resp):
             abs_url, _ = urldefrag(abs_url)
 
             links.append(abs_url)
+
+
+            
+            # Detects for future traps 
+            domain_url_counts = defaultdict(int)
+
+            for link in links:
+                domain = urlparse(link).netloc
+                domain_url_counts[domain] += 1
+
+            # Detect sudden bursts
+            for domain, count in domain_url_counts.items():
+                if count > 100:  # or some dynamic threshold
+                    logger.warning(f"[POSSIBLE TRAP] {domain} produced {count} links on one page")
+                    return []
+
 
             # Use for Debugging 
             # print(f"[SUCCESS] Found {len(links)} links on {url}")
@@ -169,15 +205,99 @@ def is_valid(url):
             # logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
 
-        # Ignoring irrelvant urls within gitlab repos
+        # Gitlab repos
         if ("gitlab" in url):
-            return gitlab_ignore(url)
+            # Ignore merges
+            if f"merge_request" in path_lower:
+                # logger.info(f"SKIPPED (gitlab merge request detected): {url}")
+                return False
+            
+            # Ignoring parallels
+            if f"?view=parallel" in url:
+                # logger.info(f"SKIPPED (gitlab parallel detected): {url}")
+                return False
+
+            # Ignoring Gitlab repos
+            if f"commit" in url:
+                # logger.info(f"SKIPPED (gitlab commit detected): {url}")
+                return False
+
+            # Ignoring Gitlab trees
+            if f"/tree/" in url:
+                # logger.info(f"SKIPPED (gitlab tree detected): {url}")
+                return False
+
+            # Ignoring Gitlab forks
+            if f"forks" in path_lower:
+                # logger.info(f"SKIPPED (gitlab fork detected): {url}")
+                return False
+
+            # Ignoring Gitlab forks
+            if ("branches" in path_lower) & ("all" not in path_lower):
+                    # Ideally we're only ignoring stale and active branches, nothing else should be lost
+                    # logger.info(f"SKIPPED (gitlab repeated branch): {url}")
+                    return False
+
 
         # Ignoring doku action modes
         # https://www.dokuwiki.org/devel:action_modes
 
+        if f"?do=edit" in url:
+            # logger.info(f"SKIPPED (doku.php markdown file detected): {url}")
+            return False
+        
+        if f"?do=login" in url:
+            # logger.info(f"SKIPPED (doku.php login page detected): {url}")
+            return False
+
+        # backlink: Shows a list of pages that link to the current page.
+        if f"?do=backlink" in url:
+            # logger.info(f"SKIPPED (doku.php backlink page detected): {url}")
+            return False
+
+        # ignore revisions of a page
+        if f"?do=revisions" in url:
+            # logger.info(f"SKIPPED (doku.php revision log for page is detected): {url}")
+            return False
+
+        # ignore differences of revision
+        if f"?do=diff" in url:
+            # logger.info(f"SKIPPED (doku.php difference log for page is detected): {url}")
+            return False
+
+        if f"%3" in url:
+            # logger.info(f"SKIPPED (doku.php tag detected): {url}")
+            return False
+        
+        # Ignoring doku traps - internal actions -> infinite loops
         if "doku.php" in url:
-            return doku_ignore(url)        
+            if any(param in url for param in [
+                "?do=", "&do=", "?idx=", "&idx=",
+                "?id=", "&id="
+            ]):
+                logger.debug(f"[TRAP] DokuWiki internal action blocked: {url}")
+                return False
+        
+        # Want to block known dead  or restricted subdomains 
+
+        # Ignore known dead or restricted subdomains
+        dead_hosts = {
+            "jujube.ics.uci.edu",
+            "flamingo.ics.uci.edu",
+            "asterixdb.ics.uci.edu",
+            "dblp.ics.uci.edu",
+        }
+
+        if any(dead in parsed.netloc.lower() for dead in dead_hosts):
+            logger.debug(f"[TRAP] Dead or restricted host blocked: {url}")
+            return False
+
+        # Block old personal project pages (e.g., ~username)
+        if re.search(r"/~[a-zA-Z0-9_-]+", url):
+            logger.debug(f"[TRAP] Old personal site blocked: {url}")
+            return False
+
+
 
         ignore_in_url = ["robots.txt", "&", f"%3A", f"?do=edit"]
         for item in ignore_in_url:
@@ -198,80 +318,3 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
         raise
-
-
-# Reorganized doku_ignore to the bottom of the file
-# Identifies irrelevant URLs based on this website: https://www.dokuwiki.org/devel:action_modes
-def doku_ignore(url) -> bool:
-    if f"idx=" in url:
-        # logger.info(f"SKIPPED (doku.php index expansion deteceted): {url}")
-        return False
-
-    if f"&ns=hardware" in url:
-        # logger.info(f"SKIPPED (doku.php login detected): {url}")
-        return False
-
-    if f"?do=edit" in url:
-        # logger.info(f"SKIPPED (doku.php markdown file detected): {url}")
-        return False
-    
-    if f"?do=login" in url:
-        # logger.info(f"SKIPPED (doku.php login page detected): {url}")
-        return False
-
-    # backlink: Shows a list of pages that link to the current page.
-    if f"?do=backlink" in url:
-        # logger.info(f"SKIPPED (doku.php backlink page detected): {url}")
-        return False
-
-    # ignore revisions of a page
-    if f"?do=revisions" in url:
-        # logger.info(f"SKIPPED (doku.php revision log for page is detected): {url}")
-        return False
-
-    # ignore differences of revision
-    if f"do=diff" in url:
-        # Note: &do=diff and 
-        # logger.info(f"SKIPPED (doku.php difference log for page is detected): {url}")
-        return False
-
-    if f"%3" in url:
-        # logger.info(f"SKIPPED (doku.php tag detected): {url}")
-        return False
-    
-    return True
-
-
-def gitlab_ignore(url) -> bool:
-    # Ignore merges
-    if f"merge_request" in url:
-        # logger.info(f"SKIPPED (gitlab merge request detected): {url}")
-        return False
-    
-    # Ignoring parallels
-    if f"?view=parallel" in url:
-        # logger.info(f"SKIPPED (gitlab parallel detected): {url}")
-        return False
-
-    # Ignoring Gitlab repos
-    if f"commit" in url:
-        # logger.info(f"SKIPPED (gitlab commit detected): {url}")
-        return False
-
-    # Ignoring Gitlab trees
-    if f"/tree/" in url:
-        # logger.info(f"SKIPPED (gitlab tree detected): {url}")
-        return False
-
-    # Ignoring Gitlab forks
-    if f"forks" in url:
-        # logger.info(f"SKIPPED (gitlab fork detected): {url}")
-        return False
-
-    # Ignoring Gitlab irrelevant branches
-    if ("branches" in url) & ("all" not in url):
-            # Ideally we're only ignoring stale and active branches, nothing else should be lost
-            # logger.info(f"SKIPPED (gitlab repeated branch): {url}")
-            return False
-
-    return True
