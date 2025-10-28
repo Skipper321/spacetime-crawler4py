@@ -126,7 +126,7 @@ def extract_next_links(url, resp):
             links.append(abs_url)
 
             # Use for Debugging 
-            print(f"[SUCCESS] Found {len(links)} links on {url}")
+            # print(f"[SUCCESS] Found {len(links)} links on {url}")
     except Exception as e: 
         print(f"[EXTRACTION ERROR] Problem while extracting links from {url}: {e}")
 
@@ -172,9 +172,9 @@ def is_valid(url):
             logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
         
-        if (len(set(path_lower.split('\\'))) != len(path_lower.split('\\'))):
+        if (url.count("robots.txt") > 1):
             logger.warning(f"TRAP BLOCKED (url with repeating pattern): {url}")
-        
+            return False
 
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
