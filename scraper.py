@@ -31,11 +31,11 @@ def scraper(url, resp):
     links = extract_next_links(url, resp)
     valid_links = []
 
-    # Allow for valid links and unique urls to be processed immediately rather than one after another
-    for link in links:
-        if is_valid(link):
-            valid_links.append(link)
-            unique_urls.add(link)
+    links = extract_next_links(url, resp)
+    valid_links = [link for link in links if is_valid(link)]
+
+    for link in valid_links:
+        unique_urls.add(link)
 
     if len(unique_urls) % 100 == 0:
         logger.info(f"CRAWLED {len(unique_urls)} unique pages so far.")
@@ -95,7 +95,7 @@ def extract_next_links(url, resp):
     # Parse through content 
     try: 
         html = resp.raw_response.content
-        soup = BeautifulSoup(html, "lxml")
+        soup = BeautifulSoup(html, "lxml")            
 
         for script in soup(["script", "style"]):
             script.extract()
@@ -126,7 +126,7 @@ def extract_next_links(url, resp):
             links.append(abs_url)
 
             # Use for Debugging 
-            # print(f"[SUCCESS] Found {len(links)} links on {url}")
+            print(f"[SUCCESS] Found {len(links)} links on {url}")
     except Exception as e: 
         print(f"[EXTRACTION ERROR] Problem while extracting links from {url}: {e}")
 
@@ -170,6 +170,10 @@ def is_valid(url):
         if re.search(r"\d{4}-\d{2}(-\d{2})?", url):
             logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
+        
+        if (len(set(path_lower.split('\\'))) != len(path_lower.split('\\'))):
+            logger.warning(f"TRAP BLOCKED (url with repeating pattern): {url}")
+        
 
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
