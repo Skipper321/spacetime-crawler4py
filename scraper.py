@@ -29,15 +29,31 @@ def scraper(url, resp):
     global unique_urls
 
     links = extract_next_links(url, resp)
-    valid_links = [link for link in links if is_valid(link)]
+    valid_links = []
 
-    for link in valid_links:
-        unique_urls.add(link)
+    # Allow for valid links and unique urls to be processed immediately rather than one after another
+    for link in links:
+        if is_valid(link):
+            valid_links.append(link)
+            unique_urls.add(link)
 
     if len(unique_urls) % 100 == 0:
         logger.info(f"CRAWLED {len(unique_urls)} unique pages so far.")
 
     return valid_links
+
+# Gets sitemap's URLs from the url response (Assumes that the response of the url is already an xml file)
+def get_sitemap_urls(resp) -> list:
+    sitemap_urls = []
+
+    soup = BeautifulSoup(resp.text, 'xml')
+    for item in soup.find_all("loc"):
+        print(type(item))
+        if '.xml' in item.text:
+            # # Resolve the relative URLS to absolute/fragments?
+            sitemap_urls.add(item)
+    
+    return [(sitemap_urls)]
 
 def extract_next_links(url, resp):
     # Implementation required.
@@ -59,8 +75,18 @@ def extract_next_links(url, resp):
         logger.error(f"BAD RESPONSE {resp.status}: {url} | Error: {getattr(resp, 'error', None)}")
         return links 
 
-    # Ensure that content is HTML 
+    # Ensure that content is HTML / XML
     content_type = resp.raw_response.headers.get("Content-Type", "")
+
+    if "xml" in content_type:
+        try:
+            sitemap_links = get_sitemap_urls(resp)
+            links += sitemap_links
+            return links
+        except Exception as e: 
+            print(f"[EXTRACTION ERROR] Problem while extracting links from sitemap url {url}: {e}")
+            return links
+
     if "text/html" not in content_type: 
         # Log content error for debugging 
         logger.info(f"SKIPPED NON-HTML: {url} | Content-Type: {content_type}")
