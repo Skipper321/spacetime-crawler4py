@@ -24,7 +24,8 @@ class Frontier(object):
                 f"Found save file {self.config.save_file}, deleting it.")
             os.remove(self.config.save_file)
         # Load existing save file, or create one if it does not exist.
-        self.save = shelve.open(self.config.save_file)
+        import dbm.dumb
+        self.save = shelve.Shelf(dbm.dumb.open(self.config.save_file, "c"))
         if restart:
             for url in self.config.seed_urls:
                 self.add_url(url)
