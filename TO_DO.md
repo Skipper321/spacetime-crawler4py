@@ -17,13 +17,12 @@ See [Doku.php traps](Doku.php-traps)
 https://wiki.ics.uci.edu/doku.php/network:ip?do=media&ns=network
 https://wiki.ics.uci.edu/doku.php/network:ip?do=media
 2. 
-
-### Gitlab
-1. `?view=parallel` with links:
-https://gitlab.ics.uci.edu/anastar1/Minesweeper_Student/-/commit/c814d2563a9465d42e23e772c21a08a972db72bb?view=parallel
-https://gitlab.ics.uci.edu/anastar1/Minesweeper_Student/-/commit/c814d2563a9465d42e23e772c21a08a972db72bb
+- Gitlab traps
 
 ## To do (lower priority)
 1. Write up a draft of the report, including explanations for our trap blockers
 2. Look into how appointments are going to work
 3. Multithreading
+
+# Finished
+This doesn't mean that it's correct, it just means that I went over it
