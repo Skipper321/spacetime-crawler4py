@@ -169,70 +169,15 @@ def is_valid(url):
             # logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
 
-        # Gitlab repos
+        # Ignoring irrelvant urls within gitlab repos
         if ("gitlab" in url):
-            # Ignore merges
-            if f"merge_request" in path_lower:
-                # logger.info(f"SKIPPED (gitlab merge request detected): {url}")
-                return False
-            
-            # Ignoring parallels
-            if f"?view=parallel" in url:
-                # logger.info(f"SKIPPED (gitlab parallel detected): {url}")
-                return False
-
-            # Ignoring Gitlab repos
-            if f"commit" in url:
-                # logger.info(f"SKIPPED (gitlab commit detected): {url}")
-                return False
-
-            # Ignoring Gitlab trees
-            if f"/tree/" in url:
-                # logger.info(f"SKIPPED (gitlab tree detected): {url}")
-                return False
-
-            # Ignoring Gitlab forks
-            if f"forks" in path_lower:
-                # logger.info(f"SKIPPED (gitlab fork detected): {url}")
-                return False
-
-            # Ignoring Gitlab forks
-            if ("branches" in path_lower) & ("all" not in path_lower):
-                    # Ideally we're only ignoring stale and active branches, nothing else should be lost
-                    # logger.info(f"SKIPPED (gitlab repeated branch): {url}")
-                    return False
-
+            return gitlab_ignore(url)
 
         # Ignoring doku action modes
         # https://www.dokuwiki.org/devel:action_modes
 
-        if f"?do=edit" in url:
-            # logger.info(f"SKIPPED (doku.php markdown file detected): {url}")
-            return False
-        
-        if f"?do=login" in url:
-            # logger.info(f"SKIPPED (doku.php login page detected): {url}")
-            return False
-
-        # backlink: Shows a list of pages that link to the current page.
-        if f"?do=backlink" in url:
-            # logger.info(f"SKIPPED (doku.php backlink page detected): {url}")
-            return False
-
-        # ignore revisions of a page
-        if f"?do=revisions" in url:
-            # logger.info(f"SKIPPED (doku.php revision log for page is detected): {url}")
-            return False
-
-        # ignore differences of revision
-        if f"?do=diff" in url:
-            # logger.info(f"SKIPPED (doku.php difference log for page is detected): {url}")
-            return False
-
-        if f"%3" in url:
-            # logger.info(f"SKIPPED (doku.php tag detected): {url}")
-            return False
-        
+        if "doku.php" in url:
+            return doku_ignore(url)        
 
         ignore_in_url = ["robots.txt", "&", f"%3A", f"?do=edit"]
         for item in ignore_in_url:
@@ -253,3 +198,80 @@ def is_valid(url):
     except TypeError:
         print ("TypeError for ", parsed)
         raise
+
+
+# Reorganized doku_ignore to the bottom of the file
+# Identifies irrelevant URLs based on this website: https://www.dokuwiki.org/devel:action_modes
+def doku_ignore(url) -> bool:
+    if f"idx=" in url:
+        # logger.info(f"SKIPPED (doku.php index expansion deteceted): {url}")
+        return False
+
+    if f"&ns=hardware" in url:
+        # logger.info(f"SKIPPED (doku.php login detected): {url}")
+        return False
+
+    if f"?do=edit" in url:
+        # logger.info(f"SKIPPED (doku.php markdown file detected): {url}")
+        return False
+    
+    if f"?do=login" in url:
+        # logger.info(f"SKIPPED (doku.php login page detected): {url}")
+        return False
+
+    # backlink: Shows a list of pages that link to the current page.
+    if f"?do=backlink" in url:
+        # logger.info(f"SKIPPED (doku.php backlink page detected): {url}")
+        return False
+
+    # ignore revisions of a page
+    if f"?do=revisions" in url:
+        # logger.info(f"SKIPPED (doku.php revision log for page is detected): {url}")
+        return False
+
+    # ignore differences of revision
+    if f"do=diff" in url:
+        # Note: &do=diff and 
+        # logger.info(f"SKIPPED (doku.php difference log for page is detected): {url}")
+        return False
+
+    if f"%3" in url:
+        # logger.info(f"SKIPPED (doku.php tag detected): {url}")
+        return False
+    
+    return True
+
+
+def gitlab_ignore(url) -> bool:
+    # Ignore merges
+    if f"merge_request" in url:
+        # logger.info(f"SKIPPED (gitlab merge request detected): {url}")
+        return False
+    
+    # Ignoring parallels
+    if f"?view=parallel" in url:
+        # logger.info(f"SKIPPED (gitlab parallel detected): {url}")
+        return False
+
+    # Ignoring Gitlab repos
+    if f"commit" in url:
+        # logger.info(f"SKIPPED (gitlab commit detected): {url}")
+        return False
+
+    # Ignoring Gitlab trees
+    if f"/tree/" in url:
+        # logger.info(f"SKIPPED (gitlab tree detected): {url}")
+        return False
+
+    # Ignoring Gitlab forks
+    if f"forks" in url:
+        # logger.info(f"SKIPPED (gitlab fork detected): {url}")
+        return False
+
+    # Ignoring Gitlab irrelevant branches
+    if ("branches" in url) & ("all" not in url):
+            # Ideally we're only ignoring stale and active branches, nothing else should be lost
+            # logger.info(f"SKIPPED (gitlab repeated branch): {url}")
+            return False
+
+    return True
