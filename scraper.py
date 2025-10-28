@@ -152,7 +152,8 @@ def is_valid(url):
             "informatics.uci.edu",
             "stat.uci.edu"
         }
-        if not any(domain.endswith(allowed) for allowed in allowed_domains):
+        if not any(domain == allowed or domain.endswith(f".{allowed}") for allowed in allowed_domains):
+            logger.info(f"BLOCKED (outside domain): {url}")
             return False
 
         # Trap blocking
