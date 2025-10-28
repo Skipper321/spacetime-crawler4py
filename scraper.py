@@ -172,9 +172,19 @@ def is_valid(url):
             logger.warning(f"DATE TRAP BLOCKED (calendar): {url}")
             return False
         
-        if (url.count("robots.txt") > 1):
-            logger.warning(f"TRAP BLOCKED (url with repeating pattern): {url}")
-            return False
+        # ?do=edit = read only markdown of the actual link
+        # ?do=login = requires login
+        completely_ignore = [f"?do=edit", f"?do=login"]
+        for item in completely_ignore:
+            if item in url:
+                logger.info(f"SKIPPED (markdown OR login page, duplicate file detected): {url}")
+                return False
+
+        ignore_in_url = ["robots.txt", "&", f"%3A", f"?do=edit"]
+        for item in ignore_in_url:
+            if (url.count(item) > 1):
+                logger.warning(f"TRAP BLOCKED (url with repeating pattern): {url}")
+                return False
 
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
