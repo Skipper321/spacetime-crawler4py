@@ -6,8 +6,8 @@ from utils.config import Config
 from crawler import Crawler
 
 # THESE LINES ARE NEEDED IF RUNNING ON MAC
-# import multiprocessing
-# multiprocessing.set_start_method("fork")
+import multiprocessing
+multiprocessing.set_start_method("fork")
 
 # THESE LINES ARE NEEDED IF RUNNING ON WINDOWS
 # import multiprocessing

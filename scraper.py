@@ -1,6 +1,7 @@
 import re
 import tokenizer
 import logging
+from simhash import Simhash
 from urllib.parse import urlparse, urljoin, urldefrag
 from collections import defaultdict
 
@@ -24,6 +25,7 @@ logger.addHandler(console)
 STOPWORDS = set(open("stopwords.txt").read().split())
 word_frequencies = defaultdict(int)
 unique_urls = set()
+unique_pages = set()
 
 def scraper(url, resp):
     global unique_urls
@@ -58,6 +60,15 @@ def get_sitemap_urls(resp) -> list:
             sitemap_urls.add(item)
     
     return [(sitemap_urls)]
+
+# compute simhash helper function to detect near duplicate pages
+def get_features(text, width=3):
+    text = text.lower()
+    text = re.sub(r'[^\w\s]+', '', text)  # keep spaces for splitting into words
+    words = text.split()
+    if len(words) == 0:
+        return []
+    return [' '.join(words[i:i+width]) for i in range(max(len(words) - width + 1, 1))]
 
 def extract_next_links(url, resp):
     # Implementation required.
@@ -120,6 +131,19 @@ def extract_next_links(url, resp):
             if t not in STOPWORDS:
                 word_frequencies[t] += 1
     
+        # use simhash to detect near duplicate pages
+        global unique_pages
+        curr_hash = Simhash(get_features(text))
+        curr_value = curr_hash.value
+
+        # iterate through unique_page set and compare current page
+        for page_value, page_url in unique_pages:
+            if curr_hash.distance(Simhash(page_value)) < 3:
+                logger.info(f"[DUPLICATE] Skipping near-duplicate page: {url} similar to {page_url}")
+                return []
+        
+        unique_pages.add((curr_value, url))
+
     except Exception as e:
         print(f"Error parsing HTML at {url}: {e}")
         return links
@@ -156,6 +180,7 @@ def extract_next_links(url, resp):
                 if count > 100:  # or some dynamic threshold
                     logger.warning(f"[POSSIBLE TRAP] {domain} produced {count} links on one page")
                     return []
+
 
 
             # Use for Debugging 
