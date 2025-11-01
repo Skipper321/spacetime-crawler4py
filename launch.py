@@ -48,6 +48,13 @@ def main(config_file, restart):
         with open("subdomains.txt", "w") as f:
             for subdomain in sorted(subdomain_counts):
                 f.write(f"{subdomain}, {subdomain_counts[subdomain]}\n")
+        
+        from scraper import longest_page
+        with open("longest_page.txt", "w") as f:
+            f.write(f"Longest page: {longest_page['url']}\n")
+            f.write(f"Word count: {longest_page['words']}\n")
+
+        print(f"[SUMMARY] Longest page: {longest_page['url']} with {longest_page['words']} words")
 
 if __name__ == "__main__":
     parser = ArgumentParser()
