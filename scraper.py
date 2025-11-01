@@ -102,17 +102,23 @@ def extract_next_links(url, resp):
         html = resp.raw_response.content
         soup = BeautifulSoup(html, "lxml")
 
-        # Remove non-textual elements before counting words
-        for script in soup(["script", "style"]):
-            script.extract()
+        # Making a a shallow copy, just to clean text without affecting link extraction
+        text_soup = soup.__copy__()
 
-        text = soup.get_text()
+        # Remove tags that contain non-visible or repeated text (menus, headers...)
+        for tag in text_soup(["script", "style", "header", "footer", "nav", "aside"]):
+            tag.extract()
+
+        # Extract visible text ONLY
+        text = text_soup.get_text(separator=" ", strip=True)
+
+        # Tokenize text and remove stopwords
         tokens = tokenizer.tokenize(text)
         useful_tokens = [t for t in tokens if t not in STOPWORDS]
 
         # Update global word frequency
         for t in useful_tokens:
-            word_frequencies[t] += 1
+            word_frequencies[t.lower()] += 1
 
         # Track longest page
         global longest_page
