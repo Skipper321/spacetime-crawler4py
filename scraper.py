@@ -5,6 +5,7 @@ from simhash import Simhash
 from urllib.parse import urlparse, urljoin, urldefrag
 from collections import defaultdict
 from bs4 import BeautifulSoup
+from bs4 import Comment
 
 # ---------------- LOGGING SETUP ---------------- #
 logging.basicConfig(
@@ -96,21 +97,30 @@ def extract_next_links(url, resp):
     if "text/html" not in content_type:
         logger.debug(f"SKIPPED NON-HTML: {url} | Content-Type: {content_type}")
         return links
+    
+    # Detect and skip large HTML pages (politeness)
+    content_length = len(resp.raw_response.content)
+    if content_length > 5000000:  # the threshold
+        logger.warning(f"[SKIP LARGE FILE] {url}")
+        return []
 
     # Parse HTML content
     try:
         html = resp.raw_response.content
         soup = BeautifulSoup(html, "lxml")
 
-        # Making a a shallow copy, just to clean text without affecting link extraction
-        text_soup = soup.__copy__()
+        def extract_visible_text(soup):
+            texts = soup.find_all(text=True)
+            visible_texts = []
+            for t in texts:
+                if t.parent.name in ["style", "script", "head", "title", "meta", "[document]", "header", "footer", "nav", "aside"]:
+                    continue
+                if isinstance(t, Comment):
+                    continue
+                visible_texts.append(t.strip())
+            return " ".join(visible_texts)
 
-        # Remove tags that contain non-visible or repeated text (menus, headers...)
-        for tag in text_soup(["script", "style", "header", "footer", "nav", "aside"]):
-            tag.extract()
-
-        # Extract visible text ONLY
-        text = text_soup.get_text(separator=" ", strip=True)
+        text = extract_visible_text(soup)
 
         # Tokenize text and remove stopwords
         tokens = tokenizer.tokenize(text)

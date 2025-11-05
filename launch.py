@@ -30,7 +30,9 @@ def main(config_file, restart):
         from scraper import word_frequencies
         import json
         with open("word_frequencies_final.json", "w") as f:
-            json.dump(word_frequencies, f)
+            # Sort by frequency (highest first)
+            sorted_freq = dict(sorted(word_frequencies.items(), key=lambda x: x[1], reverse=True))
+            json.dump(sorted_freq, f, indent=2)
         print("[SAVED] Final word frequencies saved.")
         # Save all unique URLs (ignoring fragments)
         with open("unique_urls.txt", "w") as f:

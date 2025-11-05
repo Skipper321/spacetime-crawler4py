@@ -127,9 +127,11 @@ def tokenize(input_data: str):
                 valIndex = isValidWord(word)
 
                 if valIndex == -1:
-                    tokens.append(word.lower())
+                    if not word.isdigit():
+                        tokens.append(word.lower())
                 else:
                     wordsSlicedFromWord = getSlicedWords(word)
+                    wordsSlicedFromWord = [w.lower() for w in wordsSlicedFromWord if not w.isdigit()]
                     tokens.extend(wordsSlicedFromWord)
             except Exception:
                 pass
